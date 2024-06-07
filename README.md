@@ -134,6 +134,7 @@ In total, if there are $k$ states and $r$ symbols in the alphabet, a Turing
 machine is defined by $k \cdot r$ rules. The tape is part of the representation.
 If we include a tape of length $m$ and the positional encoding uses $p$
 dimensions, the representation is a matrix of dimensions
+
 $$ (k \cdot r + m + 1) \times (2k + 2r + 6 + p). $$
 
 ## High-level network structure
@@ -184,7 +185,48 @@ the tape. What each sub-component does:
 
 ## Implementation details
 
+First let's recall how multi-head attention works. All the attention heads
+on the same layer operate in parallel, and their results are added together
+to the residual stream. Each head decides what the attention pattern is for
+each position
+
+$$ \text{Att}[i] = \text{softmax}(x[i] KQ^T x^T) $$
+
+and then copies (and transforms) data based on this attention pattern
+
+$$ x[i] \leftarrow x[i] + \text{Att}[i] x V. $$
+
+The usual description of this process separates the $K$ and $Q$ matrices, and
+includes input and output matrices. This is to make a low-rank approximation
+of this process, that uses fewer parameters and can be executed more efficiently.
+
+### $A_1$ and $A_2$: locate active rule
+
+TBD:
+* First approximation - identity matrix on the state block, set scratch dim
+* Wrong rules get high scores, since they match themselves & friends
+* Prevent rules from matching rules: -state x next_state
+    * Needs to be stronger than self-match weight
+* Everything but rules gets 0 so probability spead equally
+    * Solution 1: Set scratch dim from? exists(state) - exists(next_state)
+    * Solution 2: Add anti-match negative weight
+* The current state vector gets this too, fixed in FF
+
+### $A_3$ and $A_4$: mark left and right of head
+
 TBD
+
+### $FF_1$: conjunction and cleanup
+
+TBD: Reminder that there's a linear function before & after ReLU
+
+TBD:
+* conjunction: need to clean-up after ourselves
+* relu(x + y - 1) is not enough, since the state and head get 1 for their var
+* instead do relu(x + y + has(next_state) - 2)
+* positional encoding stuff
+
+### TBD: second layer
 
 ## The easy and the hard parts
 
