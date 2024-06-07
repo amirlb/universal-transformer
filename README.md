@@ -193,7 +193,7 @@ Let $x$ be an $n \times d$ matrix with rows $x_{i} \in \mathbb{R}^d$,
 and let $K, Q, V$ be $d \times d$ matrices.
 Each head decides what the attention pattern is for each position
 
-$$ \text{Att}_{i} = \text{softmax}(x_{i} \ KQ^T x^T) $$
+$$ \text{Att}_i = \text{softmax}(x_i \ KQ^T x^T) $$
 
 and then copies (and transforms) data based on this attention pattern
 
