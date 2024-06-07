@@ -2,6 +2,13 @@
 
 Let's explore how neural nets can implement computational models.
 
+### Contents
+[Warm-up: CA in a CNN](#warm-up-ca-in-a-cnn)<br/>
+[Framework: Transformer Circuits](#framework-transformer-circuits)<br/>
+[Implementing any Turing machine: high-level design](#implementing-any-turing-machine-high-level-design)<br/>
+[Implementation details](#implementation-details)<br/>
+[The easy and the hard parts](#the-easy-and-the-hard-parts)
+
 ## Warm-up: CA in a CNN
 
 My favorite universal computational system is
@@ -117,7 +124,7 @@ TBD: what each layer does
     to apply to the current state
 * Layer 2: set the character at the head, set the current state, move the head
 
-# Implementation details
+## Implementation details
 
 TBD
 
