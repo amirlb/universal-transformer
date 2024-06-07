@@ -2,10 +2,16 @@
 
 Let's explore how neural nets can implement computational models.
 
+The highlight will be a weights for a 2N-layer transformer that gets a
+description of a Turing machine in the system prompt and the tape in
+the prompt, and outputs the state after N steps of computation.
+
 ### Contents
 [Warm-up: CA in a CNN](#warm-up-ca-in-a-cnn)<br/>
+[Turing machines](#turing-machines)<br/>
 [Framework: Transformer Circuits](#framework-transformer-circuits)<br/>
-[Implementing any Turing machine: high-level design](#implementing-any-turing-machine-high-level-design)<br/>
+[Representation details](#representation-details)<br/>
+[High-level design](#high-level-network-structure)<br/>
 [Implementation details](#implementation-details)<br/>
 [The easy and the hard parts](#the-easy-and-the-hard-parts)
 
@@ -59,6 +65,22 @@ using so few operations. There are still two ReLU gates here, and it may be
 possible to achieve universality using only one. Maybe even without adding
 multiple filters per cell.
 
+## Turing machines
+
+Honestly, Turing machines? Why the heck?
+
+It's a useless model: too convoluted to analyze, too low-level
+to write programs in, too different from hardware to implement.
+
+Even Turing in his early papers hand-waved it away when he wanted to prove
+anything. They were just a rhetorical device, needed to convince people
+in the 1930's who never saw a computer that it was possible to implement
+general computation with mechanics or electronics or whatever. I think we
+keep it now only to torture first-years.
+
+But still, the Turing machine is the formal definition of computation, so
+here we go.
+
 ## Framework: Transformer Circuits
 
 Someone in a discussion group said that a transformer is a natual Turing
@@ -80,49 +102,89 @@ a specific Turing machine. Probably even easier.
 
 Another idea that was explained very eloquently in the paper is what an
 attention head actually does. The K and Q matrices interpreted together
-define a bilinear form, and attention is strongest for elements that are
+define a bilinear form, and attention is strongest for items that are
 parallel according to that form. And then the V matrix defines what data
 to copy from one to the other.
 
 These will be key in the implementation below.
 
-## Implementing any Turing machine: high-level design
+## Representation details
 
-The number of dimensions of the encoding depends on the alphabet size and
-on the number of states, but not on the machine itself.
+The embeddings sequence contains the following, in sequence:
+* Transition rules for the Turing machine, each in a single vector
+* Tape contents, each tape position in a single vector; One of them is
+    marked with a "head" feature
+* The current machine state is the last vector, the "output" position
 
-The rules defining the machine, as well as the initial tape and state,
-are the embedded sequence.
+In order to be able to make the transformer weights cleaner, we put everything
+in a separate dimension:
+* Machine state is uses one-hot encoding
+* Tape contents uses one-hot encoding
+* Transition rules specify the current and next machine state and tape symbol.
+    They re-use the dimesions above but also get their own dimensions for
+    one-hot encoding of the output state and symbol
+* Transition rules also specify head movement, we allow "left", "stay" and
+    "right" and allocate 3 dimensions for this
+* These "direction" dimensions are also used to denote the machine head position
+    and the positions to its left and right
+* Positional embeddings are stored in separate dimensions
+* 3 dimensions are allocated as a scratch-pad for calculations
 
-Both the state space and the alphabet use one-hot encoding. The rules
-of the Turing machine are one token each, and the tape is one token each.
-The machine state is the last token, which means that after the network
-is run, the "output" of the transformer is the output token.
+In total the representation is a matrix of dimensions
 
-In order to support rules, we actually have two copies of the state and
-alphabet dimensions. There are additional dimensions for head movement
-directions, that are also used to indicate the head position on the tape,
-and a few dimenstions that are used as a scratch-pad for calculations.
+$$
+\begin{align*}
+rows & = |rules| + len(tape) + 1 \\
+cols &= 2 |states| + 2 |symbols| + 6 + p
+\end{align*}
+$$
 
-TBD: show matrix with sequence locations and embedding dimesions
+where $p$ is the number of dimensions in the positional encoding and
+$$ |rules| = |states| \cdot |symbols| .$$
 
-The networks is made of 2 transformer layers. For simplicity normalization
+## High-level network structure
+
+The network is made of 2 transformer layers. For simplicity normalization
 is elided. Masking isn't used, to allow the head to travel backwards.
 The formula of the network is then:
 
-    x = rules | tape | initial state
-    x += attention1(x) + attention2(x) + attention3(x)
-    x += feedforward1(x)
-    x += attention4(x) + attention5(x)
-    x += feedforward2(x)
+$$
+\begin{align*}
+x_0 & = \text{rule}_1 \ldots \text{rule}_n \text{tape}_1 \ldots \text{tape}_m \text{state} \\
+x_1 & = x_0 + A_1(x_0) + A_2(x_0) + A_3(x_0) + A_4(x_0) \\
+x_2 & = x_1 + FF_1(x_1) \\
+x_3 & = x_2 + A_5(x_2) + A_6(x_2) + A_7(x_2) + A_8(x_2) \\
+x_4 & = x_3 + FF_2(x_3)
+\end{align*}
+$$
 
 The two layers can then be repeated as many times as desired to run multiple
-moves of the Turing machine.
+steps of the Turing machine.
 
-TBD: what each layer does
-* Layer 1: mark "one left" and "one right" for the current head, mark the rule
-    to apply to the current state
-* Layer 2: set the character at the head, set the current state, move the head
+The first layer marks the rule to apply (the one matching the symbol under
+the head and the current state), and marks the positions to the right and
+to the left of the head in the tape. This is done by the different components:
+* $A_1$ checks if the state dimensions of each item match these dimensions
+    in the "current state" position, and writes the result in the scratch pad.
+* $A_2$ checks if the symbol dimensions of each item match these dimensions
+    in the tape item marked as "head", and writes the result in the scratch pad.
+* $A_3$ copies the "head" dimension to the "left" dimension one position to the
+    left, skipping "rule" items.
+* $A_4$ copies the "head" dimension to the "right" dimension one position to the
+    right, skipping "rule" items.
+* $FF_1$ calculates the "and" operation between the comparisons, cleans up
+    position calculations in the "left" and "right" dimensions, and cleans the
+    scratch pad. It also erases the symbol under the head position in the tape.
+
+The second layer copies the new symbol under the head position in the tape,
+copies the new state to the "current state" position, and moves the head on
+the tape. What each sub-component does:
+* $A_5$ erases the current state and the "active rule" mark
+* $A_6$ copies the state from the active rule to the "current state" position
+* $A_7$ copies the symbol from the active rule to the head position in the tape
+* $A_8$ sets the head position of the tape (either promoting left/right to head
+    or erasing them and leaving the head marked)
+* $FF_2$ does ??? some cleanup (TBD)
 
 ## Implementation details
 
