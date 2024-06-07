@@ -145,11 +145,11 @@ The formula of the network is then:
 
 $$
 \begin{align*}
-x_0 & = \text{rule}_1 \ldots \text{rule}_n \ \text{tape}_1 \ldots \text{tape}_m \ \text{state} \\
-x_1 & = x_0 + A_1(x_0) + A_2(x_0) + A_3(x_0) + A_4(x_0) \\
-x_2 & = x_1 + FF_1(x_1) \\
-x_3 & = x_2 + A_5(x_2) + A_6(x_2) + A_7(x_2) + A_8(x_2) \\
-x_4 & = x_3 + FF_2(x_3)
+s_0 & = \text{rule}_1 \ldots \text{rule}_n \ \text{tape}_1 \ldots \text{tape}_m \ \text{state} \\
+s_1 & = s_0 + A_1(s_0) + A_2(s_0) + A_3(s_0) + A_4(s_0) \\
+s_2 & = s_1 + FF_1(s_1) \\
+s_3 & = s_2 + A_5(s_2) + A_6(s_2) + A_7(s_2) + A_8(s_2) \\
+s_4 & = s_3 + FF_2(s_3)
 \end{align*}
 $$
 
@@ -187,14 +187,17 @@ the tape. What each sub-component does:
 
 First let's recall how multi-head attention works. All the attention heads
 on the same layer operate in parallel, and their results are added together
-to the residual stream. Each head decides what the attention pattern is for
-each position
+to the residual stream.
 
-$$ \text{Att}[i] = \text{softmax}(x[i] KQ^T x^T) $$
+Let $x$ be an $n \times d$ matrix with rows $x_{i} \in \mathbb{R}^d$,
+and let $K, Q, V$ be $d \times d$ matrices.
+Each head decides what the attention pattern is for each position
+
+$$ \text{Att}_{i} = \text{softmax}(x_{i} \ KQ^T x^T) $$
 
 and then copies (and transforms) data based on this attention pattern
 
-$$ x[i] \leftarrow x[i] + \text{Att}[i] x V. $$
+$$ x_{i} \leftarrow x_{i} + \text{Att}_{i} \ x\  V. $$
 
 The usual description of this process separates the $K$ and $Q$ matrices, and
 includes input and output matrices. This is to make a low-rank approximation
