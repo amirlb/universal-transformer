@@ -130,17 +130,11 @@ in a separate dimension:
 * Positional embeddings are stored in separate dimensions
 * 3 dimensions are allocated as a scratch-pad for calculations
 
-In total the representation is a matrix of dimensions
-
-$$
-\begin{align*}
-rows & = |rules| + len(tape) + 1 \\
-cols &= 2 |states| + 2 |symbols| + 6 + p
-\end{align*}
-$$
-
-where $p$ is the number of dimensions in the positional encoding and
-$$ |rules| = |states| \cdot |symbols| .$$
+In total, if there are $k$ states and $r$ symbols in the alphabet, a Turing
+machine is defined by $k \cdot r$ rules. The tape is part of the representation.
+If we include a tape of length $m$ and the positional encoding uses $p$
+dimensions, the representation is a matrix of dimensions
+$$ (k \cdot r + m + 1) \times (2k + 2r + 6 + p). $$
 
 ## High-level network structure
 
@@ -150,13 +144,15 @@ The formula of the network is then:
 
 $$
 \begin{align*}
-x_0 & = \text{rule}_1 \ldots \text{rule}_n \text{tape}_1 \ldots \text{tape}_m \text{state} \\
+x_0 & = \text{rule}_1 \ldots \text{rule}_n \ \text{tape}_1 \ldots \text{tape}_m \ \text{state} \\
 x_1 & = x_0 + A_1(x_0) + A_2(x_0) + A_3(x_0) + A_4(x_0) \\
 x_2 & = x_1 + FF_1(x_1) \\
 x_3 & = x_2 + A_5(x_2) + A_6(x_2) + A_7(x_2) + A_8(x_2) \\
 x_4 & = x_3 + FF_2(x_3)
 \end{align*}
 $$
+
+where each $A_i$ is an attention head.
 
 The two layers can then be repeated as many times as desired to run multiple
 steps of the Turing machine.
