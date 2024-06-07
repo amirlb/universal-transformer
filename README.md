@@ -14,8 +14,11 @@ This is a 1-dimenstional cellular automaton with 2 states where the evolution
 depends only on the immediate neighbors. This means we can list the 8 cases
 to define the system completely:
 
-    Given      ...    ..x    .x.    .xx    x..    x.x    xx.    xxx
-    Set to      .      x      x      x      .      x      x      .
+    Given     ...   ..x   .x.   .xx
+    Set to     .     x     x     x
+
+    Given     x..   x.x   xx.   xxx
+    Set to     .     x     x     .
 
 There's a neat expression for this:
 
