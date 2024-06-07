@@ -14,11 +14,8 @@ This is a 1-dimenstional cellular automaton with 2 states where the evolution
 depends only on the immediate neighbors. This means we can list the 8 cases
 to define the system completely:
 
-    Given     ...  ..x  .x.  .xx
-    Produce    .    x    x    x
-
-    Given     x..  x.x  xx.  xxx
-    Produce    .    x    x    .
+    Given      ...    ..x    .x.    .xx    x..    x.x    xx.    xxx
+    Set to      .      x      x      x      .      x      x      .
 
 There's a neat expression for this:
 
@@ -61,14 +58,15 @@ a transformer.
 Since I read the
 [Transformer Circuits](https://transformer-circuits.pub/2021/framework/)
 framework it's the way I think about transformers, so I started using that.
-It became clear pretty quickly that it will be as easy to implement a
-general Turing machine interpreter as it will be implementing a compiler
-from Turing machine to weight tensors. Probably even easier.
 
 The part of the paper that stuck the hardest in my mind is induction heads -
 this is a feature of the transformer architecture that allows it to search
 for any token, or any value from an earlier layer, and refer to the part of
 the sequence starting from the found position.
+
+This means that it will be as easy to find weight tensors that implement a
+general Turing machine interpreter as it will be to figure out weights for
+a specific Turing machine. Probably even easier.
 
 Another idea that was explained very eloquently in the paper is what an
 attention head actually does. The K and Q matrices interpreted together
@@ -78,10 +76,13 @@ to copy from one to the other.
 
 These will be key in the implementation below.
 
-## Implementing any Turing machine
+## Implementing any Turing machine: high-level design
 
 The number of dimensions of the encoding depends on the alphabet size and
 on the number of states, but not on the machine itself.
+
+The rules defining the machine, as well as the initial tape and state,
+are the embedded sequence.
 
 Both the state space and the alphabet use one-hot encoding. The rules
 of the Turing machine are one token each, and the tape is one token each.
@@ -92,6 +93,8 @@ In order to support rules, we actually have two copies of the state and
 alphabet dimensions. There are additional dimensions for head movement
 directions, that are also used to indicate the head position on the tape,
 and a few dimenstions that are used as a scratch-pad for calculations.
+
+TBD: show matrix with sequence locations and embedding dimesions
 
 The networks is made of 2 transformer layers. For simplicity normalization
 is elided. Masking isn't used, to allow the head to travel backwards.
@@ -106,7 +109,14 @@ The formula of the network is then:
 The two layers can then be repeated as many times as desired to run multiple
 moves of the Turing machine.
 
-Details TBD.
+TBD: what each layer does
+* Layer 1: mark "one left" and "one right" for the current head, mark the rule
+    to apply to the current state
+* Layer 2: set the character at the head, set the current state, move the head
+
+# Implementation details
+
+TBD
 
 ## The easy and the hard parts
 
